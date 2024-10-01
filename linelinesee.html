@@ -1,0 +1,231 @@
+﻿<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Gamedev Canvas Workshop</title>
+  </head>
+  <body onload="onload()">
+    <canvas id="myCanvas"></canvas>
+      
+    <script>
+        var canvas = document.getElementById("myCanvas");
+        var ctx = canvas.getContext("2d");
+        const colors = ["red", "yellow", "pink", "green", "orange",
+                    "black", "gray", "blue", "purple"];
+        var c = [];
+        var lastBrisk = 0;
+
+        ctx.circle=function(x, y, r) {
+          this.arc(x, y, r, 0, Math.PI * 2);
+        }
+        ctx.drawRect=function(x, y, width, height, color) {
+          this.beginPath();
+          this.rect(x, y, width, height);
+          this.fillStyle = color;
+          this.fill();
+        }
+        ctx.drawLine=function(pts, color, width) {
+          this.beginPath();
+          this.moveTo(pts[0].x*Brisk.width+Brisk.width/2,
+            pts[0].y*Brisk.height+Brisk.height/2);
+          for(var i=1;i<pts.length;i++)
+            this.lineTo(pts[i].x*Brisk.width+Brisk.width/2, 
+              pts[i].y*Brisk.height+Brisk.height/2);
+          this.strokeStyle=color;
+          this.lineWidth=width;
+          this.stroke();
+        }
+
+        function Brisk(x, y, color) {
+          this.x=x;
+          this.y=y;
+          this.color=color;
+          this.enable=true;
+        }
+        Brisk.clickColor="white";
+        Brisk.noneColor="#EEEEEE";
+        Brisk.width=80;
+        Brisk.height=80;
+        Brisk.lineWidth=20;
+        Brisk.prototype.toString=function() {
+          return 'x:'+x+' y:'+y+' color:'+color+' enable:'+enable;
+        }
+        Brisk.prototype.draw=function() {
+          ctx.drawRect(this.x*Brisk.width, this.y*Brisk.height,
+            Brisk.width, Brisk.height, 
+            this.enable?this.color:Brisk.noneColor);
+        };
+        Brisk.prototype.click=function() {
+          ctx.beginPath();
+          ctx.rect(this.x*Brisk.width+3, this.y*Brisk.height+3,
+            Brisk.width-6, Brisk.height-6);
+          ctx.lineWidth=6;
+          ctx.strokeStyle=Brisk.clickColor;
+          ctx.stroke();
+        }
+
+        function onload() {
+          setwh(window.innerWidth-20, window.innerHeight-20);
+          c_init();
+          draw_all();
+        }
+        function setwh(width, height) {
+          canvas.width=width;
+          canvas.height=height;
+        }
+        function c_init() {
+          Brisk.xs=Math.floor(canvas.width/Brisk.width);
+          Brisk.ys=Math.floor(canvas.height/Brisk.height);
+          for(var i=0;i<Brisk.xs;i++) {
+              arr=[]
+              for (var j = 0; j<Brisk.ys; j++)
+                arr.push(new Brisk(i, j));
+              arr[0].enable=false;
+              arr[arr.length-1].enable=false;
+              c.push(arr);
+          }
+          for(ele of c[0])
+            ele.enable=false;
+          for(ele of c[c.length-1])
+            ele.enable=false;
+
+          cis=[];
+          const pairs=Math.floor((Brisk.xs-2)*(Brisk.ys-2)/2);
+          for(var i=0;i<pairs;i++)
+          {
+            const ci=Math.floor(Math.random()*colors.length);
+            cis.push(ci); cis.push(ci);
+          }
+          for(var i=0;i<pairs*2;i++)
+          {
+            const ri=Math.floor(Math.random()*pairs*2);
+            [cis[i], cis[ri]]=[cis[ri], cis[i]];
+          }
+          for(var x=0;x<Brisk.xs-2;x++)
+          for(var y=0;y<Brisk.ys-2;y++)
+          if(x*(Brisk.ys-2)+y<pairs*2)
+            c[x+1][y+1].color=colors[cis[x*(Brisk.ys-2)+y]], lastBrisk++;
+          else
+            c[x+1][y+1].enable=false;
+        }
+        function draw_all() {
+          for(cc of c)
+          for(ccc of cc)
+            ccc.draw();
+        }
+
+        c.get=function(x, y) {
+          return c[Math.floor(x/Brisk.width)][Math.floor(y/Brisk.height)];
+        }
+        function isLineEmptyx(x, y1, y2) {
+          for(var i=Math.min(y1, y2)+1;i<=Math.max(y1, y2)-1;i++)
+          if(c[x][i].enable)
+            return false;
+          return true;
+        }
+        function isLineEmptyy(x1, x2, y) {
+          for(var i=Math.min(x1, x2)+1; i<=Math.max(x1, x2)-1;i++)
+          if(c[i][y].enable)
+            return false;
+          return true;
+        }
+        function findLineMx(obj1, obj2) {
+          if(obj1.y==obj2.y)
+            return -1;
+          if(obj1.x>obj2.x)
+            [obj1, obj2]=[obj2, obj1];
+          var x1, x2
+          for(x1=obj1.x+1; x1<=obj2.x && !c[x1][obj1.y].enable; x1++);
+          x1--;
+          for(x2=obj2.x-1; x2>=obj1.x && !c[x2][obj2.y].enable; x2--);
+          x2++;
+
+          for(var x=x2; x<=x1; x++)
+          if(isLineEmptyx(x, obj1.y, obj2.y))
+            return x;
+
+          if(x1==obj2.x)
+          for(var x=x1+1; x<Brisk.width && !c[x][obj1.y].enable 
+            && !c[x][obj2.y].enable; x++)
+          if(isLineEmptyx(x, obj1.y, obj2.y))
+            return x;
+
+          if(x2==obj1.x)
+          for(var x=x2-1; x>=0 && !c[x][obj1.y].enable && !c[x][obj2.y].enable; x--)
+          if(isLineEmptyx(x, obj1.y, obj2.y))
+            return x;
+          return -1;
+        }
+        function findLineMy(obj1, obj2) {
+          if(obj1.x==obj2.x)
+            return -1;
+          if(obj1.y>obj2.y)
+            [obj1, obj2]=[obj2, obj1];
+          var y1, y2;
+          for(y1=obj1.y+1; y1<=obj2.y && !c[obj1.x][y1].enable; y1++);
+          y1--;
+          for(y2=obj2.y-1; y2>=obj1.y && !c[obj2.x][y2].enable; y2--);
+          y2++;
+
+          for(var y=y2; y<=y1; y++)
+          if(isLineEmptyy(obj1.x, obj2.x, y))
+            return y;
+
+          if(y1==obj2.y)
+          for(var y=y1+1; y<Brisk.height && !c[obj1.x][y].enable && !c[obj2.x][y].enable;
+            y++)
+          if(isLineEmptyy(obj1.x, obj2.x, y))
+            return y;
+          
+          if(y2==obj1.y)
+          for(var y=y2-1; y>=0 && !c[obj1.x][y].enable && !c[obj2.x][y].enable; y--)
+          if(isLineEmptyy(obj1.x, obj2.x, y))
+            return y;
+          return -1;
+        }
+        function drawLine(obj1, obj2) {
+          var x=findLineMx(obj1, obj2);
+          if(x>=0)
+            ctx.drawLine([obj1, {x:x, y:obj1.y}, {x:x, y:obj2.y},
+              obj2], "Aqua", Brisk.lineWidth);
+          else {
+            var y=findLineMy(obj1, obj2);
+            if(y>=0)
+              ctx.drawLine([obj1, {x:obj1.x, y:y}, {x:obj2.x, y:y},
+                obj2], "Aqua", Brisk.lineWidth);
+            else
+              return false;
+          }
+          return true;
+        }
+
+        var last_c=null, now_c;
+        canvas.addEventListener("mousedown", function (event) {
+            const mousex = event.offsetX;
+            const mousey = event.offsetY;
+            if (mousex>=0 && mousex<canvas.width &&
+                mousey>=0 && mousey<canvas.height)
+            {
+                now_c=c.get(mousex, mousey);
+                if(now_c.enable)
+                if(last_c) {
+                    if (last_c!=now_c && last_c.color==now_c.color) {
+                      if(drawLine(last_c, now_c))
+                      {
+                        last_c.enable=false;
+                        now_c.enable=false;
+                        setTimeout(draw_all, 500);
+                      } else
+                        last_c.draw();
+                    } else
+                      last_c.draw();
+                    last_c=null;
+                } else {
+                  last_c=now_c;
+                  last_c.click();
+                }
+            }
+        });
+    </script>
+  </body>
+</html>
